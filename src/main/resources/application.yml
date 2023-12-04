@@ -1,0 +1,36 @@
+plugin:
+  grpc:
+    config:
+      namespace: ${AB_NAMESPACE:accelbyte}
+      resource_name: 'CLOUDSAVEGRPCSERVICE'
+    server:
+      interceptor:
+        debug-logger:
+          enabled: false
+        auth:
+          enabled: ${PLUGIN_GRPC_SERVER_AUTH_ENABLED:false}
+
+grpc:
+  enable-reflection: true
+
+management:
+  endpoints:
+    enabled-by-default: false
+    web:
+      base-path: "/"
+      exposure:
+        include: "prometheus"
+      path-mapping:
+        prometheus: "metrics"
+  endpoint:
+    prometheus:
+      enabled: true
+
+spring:
+  main:
+    banner-mode: off
+
+logging:
+  pattern:
+    level: trace_id=%mdc{trace_id} span_id=%mdc{span_id} trace_flags=%mdc{trace_flags} %5p
+

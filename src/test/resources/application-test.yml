@@ -1,0 +1,11 @@
+plugin:
+  grpc:
+    config:
+      namespace: ${AB_NAMESPACE:accelbyte}
+      resource_name: 'CLOUDSAVEGRPCSERVICE'
+    server:
+      interceptor:
+        debug-logger:
+          enabled: false
+        auth:
+          enabled: true
