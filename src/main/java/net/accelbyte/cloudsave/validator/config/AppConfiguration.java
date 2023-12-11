@@ -15,8 +15,16 @@ import org.springframework.context.annotation.Configuration;
 public class AppConfiguration {
     @Bean
     public AccelByteSDK accelbyteSdk() {
-        final AccelByteConfig config = new AccelByteConfig(new OkhttpClient(), new DefaultTokenRefreshRepository(),
-                new DefaultConfigRepository());
+        var configRepository = new DefaultConfigRepository();
+
+        // Enable local token validation
+        configRepository.setLocalTokenValidationEnabled(true);
+        configRepository.setJwksRefreshInterval(300);
+        configRepository.setRevocationListRefreshInterval(300);
+
+        final AccelByteConfig config = new AccelByteConfig(
+                new OkhttpClient(), new DefaultTokenRefreshRepository(),
+                configRepository);
 
         return new AccelByteSDK(config);
     }

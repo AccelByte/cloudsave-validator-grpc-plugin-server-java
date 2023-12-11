@@ -26,7 +26,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web:3.1.1'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator:3.1.1'
 	implementation 'io.micrometer:micrometer-registry-prometheus:1.12.0'
-	implementation 'net.accelbyte.sdk:sdk:0.51.1'
+	implementation 'net.accelbyte.sdk:sdk:0.52.1'
 	implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
 
 	annotationProcessor 'org.projectlombok:lombok:1.18.30'

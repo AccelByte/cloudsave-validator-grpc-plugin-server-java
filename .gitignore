@@ -38,6 +38,10 @@ out/
 
 ### VS Code ###
 .vscode/
-.env
+.env*
+!.env.template
 .DS_Store
+
+### Other ###
+.run/
 

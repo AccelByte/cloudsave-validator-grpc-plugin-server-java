@@ -1,36 +1,35 @@
 package net.accelbyte.cloudsave.validator.interceptor;
 
-import io.grpc.Metadata;
-import io.grpc.ServerCall;
-import io.grpc.ServerCallHandler;
-import io.grpc.ServerInterceptor;
-import io.grpc.Status;
+import io.grpc.*;
+import io.grpc.health.v1.HealthGrpc;
 import lombok.extern.slf4j.Slf4j;
 import net.accelbyte.sdk.core.AccelByteSDK;
-
+import net.accelbyte.sdk.core.AccessTokenPayload;
+import org.apache.logging.log4j.util.Strings;
 import org.lognet.springboot.grpc.GRpcGlobalInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 
+import java.util.Objects;
+
 @Slf4j
 @GRpcGlobalInterceptor
 @Order(20)
 public class AuthInterceptor implements ServerInterceptor {
-    private final int ACTION_READ_ONLY = 2;
 
     private AccelByteSDK sdk;
+
     private String namespace;
-    private String resource;
+
     @Value("${plugin.grpc.server.interceptor.auth.enabled}")
     private boolean enabled;
 
     @Autowired
-    public AuthInterceptor(AccelByteSDK sdk, @Value("${plugin.grpc.config.resource_name}") String resource,
-            @Value("${plugin.grpc.config.namespace}") String namespace) {
+    public AuthInterceptor(AccelByteSDK sdk,
+                           @Value("${app.namespace}") String namespace) {
         this.sdk = sdk;
         this.namespace = namespace;
-        this.resource = resource;
         log.info("AuthInterceptor enabled: {})", enabled);
     }
 
@@ -38,6 +37,9 @@ public class AuthInterceptor implements ServerInterceptor {
     public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call, Metadata headers,
             ServerCallHandler<ReqT, RespT> next) {
         if (enabled) {
+            if (Objects.equals(call.getMethodDescriptor().getServiceName(), HealthGrpc.SERVICE_NAME)) {
+                return next.startCall(call, headers); // skip validation if health check
+            }
             final String authHeader = headers.get(Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER));
             if (authHeader == null) {
                 log.error("Auth header is null");
@@ -49,9 +51,14 @@ public class AuthInterceptor implements ServerInterceptor {
                 unAuthorizedCall(call, headers);
             }
             final String authToken = authTypeToken[1];
-            if (!sdk.validateToken(authToken, String.format("NAMESPACE:%s:%s", this.namespace, this.resource),
-                    ACTION_READ_ONLY)) {
+            final AccessTokenPayload tokenPayload = sdk.parseAccessToken(authToken, true);
+            if (tokenPayload == null) {
                 log.error("Auth token validation failed");
+                unAuthorizedCall(call, headers);
+            }
+            if (Strings.isBlank(tokenPayload.getExtendNamespace())
+                || !Objects.equals(tokenPayload.getExtendNamespace(), namespace)) {
+                log.error("Invalid extend namespace");
                 unAuthorizedCall(call, headers);
             }
         }
