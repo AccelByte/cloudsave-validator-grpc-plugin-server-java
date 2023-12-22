@@ -112,27 +112,32 @@ public class CloudsaveValidatorService extends CloudsaveValidatorServiceGrpc.Clo
     }
 
     @Override
-    public void beforeWritePlayerRecord(PlayerRecord request, StreamObserver<PlayerRecordValidationResult> responseObserver) {
-        if (!request.getKey().startsWith("favourite_weapon")) {
-            responsePlayerRecordSuccess(responseObserver, request.getKey(), request.getUserId());
-            return;
+    public void beforeWritePlayerRecord(PlayerRecord request,
+            StreamObserver<PlayerRecordValidationResult> responseObserver) {
+        if (request.getKey().startsWith("favourite_weapon")) {
+            try {
+                var record = objectMapper.readValue(request.getPayload().toStringUtf8(), CustomPlayerRecord.class);
+                var result = record.validate(validator);
+                if (!result.isEmpty()) {
+                    var failedValidations = result.stream()
+                            .map(ConstraintViolation::getMessage)
+                            .collect(Collectors.joining("; "));
+                    var error = Error.newBuilder()
+                            .setErrorCode(1)
+                            .setErrorMessage("Validation failed: %s".formatted(failedValidations))
+                            .build();
+                    responsePlayerRecordFailed(responseObserver, request.getKey(), request.getUserId(), error);
+                    return;
+                }
+            } catch (Exception ex) {
+                var error = Error.newBuilder()
+                        .setErrorCode(1)
+                        .setErrorMessage("Parsing failed")
+                        .build();
+                responsePlayerRecordFailed(responseObserver, request.getKey(), request.getUserId(), error);
+                return;
+            }
         }
-
-        var record = objectMapper.convertValue(request.getPayload().toByteArray(), CustomPlayerRecord.class);
-        var res = record.validate(validator);
-
-        if (!res.isEmpty()) {
-            String invalidFields = res.stream()
-                    .map(ConstraintViolation::getMessage)
-                    .collect(Collectors.joining(";"));
-            var errorDetail = Error.newBuilder()
-                    .setErrorCode(1)
-                    .setErrorMessage("Parsing failed: [%s]".formatted(invalidFields))
-                    .build();
-            responsePlayerRecordFailed(responseObserver, request.getKey(), request.getUserId(), errorDetail);
-            return;
-        }
-
         responsePlayerRecordSuccess(responseObserver, request.getKey(), request.getUserId());
     }
 
