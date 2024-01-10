@@ -36,7 +36,17 @@ public class CloudsaveValidatorService extends CloudsaveValidatorServiceGrpc.Clo
     @Override
     public void beforeWriteGameRecord(GameRecord request, StreamObserver<GameRecordValidationResult> responseObserver) {
         if (request.getKey().startsWith("map")) {
-            var record = objectMapper.convertValue(request.getPayload().toByteArray(), CustomGameRecord.class);
+            CustomGameRecord record;
+            try {
+                record = objectMapper.readValue(request.getPayload().toStringUtf8(), CustomGameRecord.class);
+            } catch (Exception e) {
+                var errorDetail = Error.newBuilder()
+                        .setErrorCode(1)
+                        .setErrorMessage("Parsing failed: [%s]".formatted(e.getMessage()))
+                        .build();
+                responseGameRecordFailed(responseObserver, request.getKey(), errorDetail);
+                return;
+            }
             var res = record.validate(validator);
             if (!res.isEmpty()) {
                 String invalidFields = res.stream()
@@ -58,7 +68,17 @@ public class CloudsaveValidatorService extends CloudsaveValidatorServiceGrpc.Clo
     @Override
     public void afterReadGameRecord(GameRecord request, StreamObserver<GameRecordValidationResult> responseObserver) {
         if (request.getKey().startsWith("daily_msg")) {
-            var message = objectMapper.convertValue(request.getPayload().toByteArray(), DailyMessage.class);
+            DailyMessage message;
+            try {
+                message = objectMapper.readValue(request.getPayload().toStringUtf8(), DailyMessage.class);
+            } catch (Exception e) {
+                var errorDetail = Error.newBuilder()
+                        .setErrorCode(1)
+                        .setErrorMessage("Parsing failed: [%s]".formatted(e.getMessage()))
+                        .build();
+                responseGameRecordFailed(responseObserver, request.getKey(), errorDetail);
+                return;
+            }
             if (message.getAvailableOn().isBefore(Instant.now())) {
                 var errorDetail = Error.newBuilder()
                         .setErrorCode(2)
@@ -86,7 +106,20 @@ public class CloudsaveValidatorService extends CloudsaveValidatorServiceGrpc.Clo
                 return success;
             }
 
-            var message = objectMapper.convertValue(it.getPayload(), DailyMessage.class);
+            DailyMessage message;
+            try {
+                message = objectMapper.readValue(it.getPayload().toStringUtf8(), DailyMessage.class);
+            } catch (Exception e) {
+                var errorDetail = Error.newBuilder()
+                        .setErrorCode(1)
+                        .setErrorMessage("Parsing failed: [%s]".formatted(e.getMessage()))
+                        .build();
+                return GameRecordValidationResult.newBuilder()
+                        .setIsSuccess(false)
+                        .setKey(it.getKey())
+                        .setError(errorDetail)
+                        .build();
+            }
             if (!message.getAvailableOn().isBefore(Instant.now())) {
                 return success;
             }
@@ -116,15 +149,25 @@ public class CloudsaveValidatorService extends CloudsaveValidatorServiceGrpc.Clo
             StreamObserver<PlayerRecordValidationResult> responseObserver) {
         if (request.getKey().startsWith("favourite_weapon")) {
             try {
-                var record = objectMapper.readValue(request.getPayload().toStringUtf8(), CustomPlayerRecord.class);
+                CustomPlayerRecord record;
+                try {
+                    record = objectMapper.readValue(request.getPayload().toStringUtf8(), CustomPlayerRecord.class);
+                } catch (Exception e) {
+                    var errorDetail = Error.newBuilder()
+                            .setErrorCode(1)
+                            .setErrorMessage("Parsing failed: [%s]".formatted(e.getMessage()))
+                            .build();
+                    responsePlayerRecordFailed(responseObserver, request.getKey(), request.getUserId(), errorDetail);
+                    return;
+                }
                 var result = record.validate(validator);
                 if (!result.isEmpty()) {
                     var failedValidations = result.stream()
                             .map(ConstraintViolation::getMessage)
-                            .collect(Collectors.joining("; "));
+                            .collect(Collectors.joining(";"));
                     var error = Error.newBuilder()
                             .setErrorCode(1)
-                            .setErrorMessage("Validation failed: %s".formatted(failedValidations))
+                            .setErrorMessage("Validation failed: [%s]".formatted(failedValidations))
                             .build();
                     responsePlayerRecordFailed(responseObserver, request.getKey(), request.getUserId(), error);
                     return;
@@ -171,7 +214,17 @@ public class CloudsaveValidatorService extends CloudsaveValidatorServiceGrpc.Clo
             return;
         }
 
-        var record = objectMapper.convertValue(request.getPayload().toByteArray(), CustomGameRecord.class);
+        CustomGameRecord record;
+        try {
+            record = objectMapper.readValue(request.getPayload().toStringUtf8(), CustomGameRecord.class);
+        } catch (Exception e) {
+            var errorDetail = Error.newBuilder()
+                    .setErrorCode(1)
+                    .setErrorMessage("Parsing failed: [%s]".formatted(e.getMessage()))
+                    .build();
+            responseGameRecordFailed(responseObserver, request.getKey(), errorDetail);
+            return;
+        }
         var res = record.validate(validator);
         if (!res.isEmpty()) {
             String invalidFields = res.stream()
@@ -197,7 +250,17 @@ public class CloudsaveValidatorService extends CloudsaveValidatorServiceGrpc.Clo
             return;
         }
 
-        var activity = objectMapper.convertValue(request.getPayload().toByteArray(), PlayerActivity.class);
+        PlayerActivity activity;
+        try {
+            activity = objectMapper.readValue(request.getPayload().toStringUtf8(), PlayerActivity.class);
+        } catch (Exception e) {
+            var errorDetail = Error.newBuilder()
+                    .setErrorCode(1)
+                    .setErrorMessage("Parsing failed: [%s]".formatted(e.getMessage()))
+                    .build();
+            responsePlayerRecordFailed(responseObserver, request.getKey(), request.getUserId(), errorDetail);
+            return;
+        }
         var res = activity.validate(validator);
 
         if (!res.isEmpty()) {
