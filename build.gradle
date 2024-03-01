@@ -1,8 +1,8 @@
 plugins {
 	id 'application'
-	id "io.github.lognet.grpc-spring-boot" version '5.1.5'
-	id 'io.spring.dependency-management' version '1.1.4'
-	id 'org.springframework.boot' version '3.1.1'
+	id "io.github.lognet.grpc-spring-boot" version '4.8.1'
+	id 'io.spring.dependency-management' version '1.0.14.RELEASE'
+	id 'org.springframework.boot' version '2.7.4'
 }
 
 group = 'net.accelbyte.cloudsave.validator'
@@ -26,8 +26,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter:3.1.1'
 	implementation 'org.springframework.boot:spring-boot-starter-web:3.1.1'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator:3.1.1'
-	implementation 'net.accelbyte.sdk:sdk:0.52.1'
+	implementation 'net.accelbyte.sdk:sdk:0.57.0'
 	implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
 
 	annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
