@@ -49,7 +49,7 @@ curl -X POST -s "${AB_BASE_URL}/cloudsave/v1/admin/namespaces/$AB_NAMESPACE/plug
 
 echo Creating PLAYER ...
 
-USER_ID="$(curl -s "${AB_BASE_URL}/iam/v4/public/namespaces/$AB_NAMESPACE/users" -H "Authorization: Bearer $ACCESS_TOKEN" -H 'Content-Type: application/json' -d "{\"authType\":\"EMAILPASSWD\",\"country\":\"ID\",\"dateOfBirth\":\"1995-01-10\",\"displayName\":\"Cloudsave-gRPC-Player\",\"emailAddress\":\"${DEMO_PREFIX}_player@test.com\",\"password\":\"GFPPlmdb2-\",\"username\":\"${DEMO_PREFIX}_player\"}" | jq --raw-output .userId)"
+USER_ID="$(curl -s "${AB_BASE_URL}/iam/v4/public/namespaces/$AB_NAMESPACE/users" -H "Authorization: Bearer $ACCESS_TOKEN" -H 'Content-Type: application/json' -d "{\"authType\":\"EMAILPASSWD\",\"country\":\"ID\",\"dateOfBirth\":\"1995-01-10\",\"displayName\":\"Cloudsave-gRPC-Player\",\"emailAddress\":\"${DEMO_PREFIX}_player@test.com\",\"password\":\"GFPPlmdb2-\",\"username\":\"${DEMO_PREFIX}_player\"}, \"uniqueDisplayName\":\"${DEMO_PREFIX}_player\"}" | jq --raw-output .userId)"
 
 if [ "$USER_ID" == "null" ]; then
   echo "Failed to create player with email ${DEMO_PREFIX}_player@test.com, please delete existing first!"
