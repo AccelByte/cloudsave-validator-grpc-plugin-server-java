@@ -50,7 +50,7 @@ flow properly when the app is deployed.
 
    a. Base URL
    
-      - For `Starter` tier e.g.  https://spaceshooter.gamingservices.accelbyte.io
+      - For `Starter` tier e.g.  https://spaceshooter.prod.gamingservices.accelbyte.io
       - For `Premium` tier e.g.  https://dev.accelbyte.io
       
    b. [Create a Game Namespace](https://docs.accelbyte.io/gaming-services/tutorials/how-to/create-a-game-namespace/) if you don't have one yet. Keep the `Namespace ID`.
@@ -208,11 +208,17 @@ public IP, we can use something like [ngrok](https://ngrok.com/).
 
 4. [Create an OAuth Client](https://docs.accelbyte.io/gaming-services/services/access/authorization/manage-access-control-for-applications/#create-an-iam-client) with `confidential` client type with the following permissions. Keep the `Client ID` and `Client Secret`.
    
-   - ADMIN:NAMESPACE:{namespace}:CLOUDSAVE:PLUGINS [CREATE, READ, UPDATE, DELETE]
-   - ADMIN:NAMESPACE:{namespace}:USER:*:CLOUDSAVE:RECORD [CREATE, READ, UPDATE, DELETE]
-   - ADMIN:NAMESPACE:{namespace}:CLOUDSAVE:RECORD [CREATE, READ, UPDATE, DELETE]
-   - NAMESPACE:{namespace}:CLOUDSAVE:RECORD [CREATE, READ, UPDATE, DELETE]
-   - ADMIN:NAMESPACE:{namespace}:INFORMATION:USER:* [DELETE]
+   - For AGS Premium customers:
+      - ADMIN:NAMESPACE:{namespace}:CLOUDSAVE:PLUGINS [CREATE, READ, UPDATE, DELETE]
+      - ADMIN:NAMESPACE:{namespace}:USER:*:CLOUDSAVE:RECORD [CREATE, READ, UPDATE, DELETE]
+      - ADMIN:NAMESPACE:{namespace}:CLOUDSAVE:RECORD [CREATE, READ, UPDATE, DELETE]
+      - NAMESPACE:{namespace}:CLOUDSAVE:RECORD [CREATE, READ, UPDATE, DELETE]
+      - ADMIN:NAMESPACE:{namespace}:INFORMATION:USER:* [DELETE]
+   - For AGS Starter customers:
+      - Cloud Save -> Custom Configuration (Read, Create, Update, Delete)
+      - Cloud Save -> Game Records (Read, Create, Update, Delete)
+      - Cloud Save -> Player Records (Read, Create, Update, Delete)
+      - IAM -> Users (Delete)
 
    > :warning: **Oauth Client created in this step is different from the one from Prerequisites section:** It is required 
    by [demo.sh](demo.sh) script in the next step to register the `gRPC Server` URL and also to create and delete test users.
