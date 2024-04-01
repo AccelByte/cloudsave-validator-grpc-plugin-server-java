@@ -46,7 +46,7 @@ test_functional_local_hosted:
 test_functional_accelbyte_hosted:
 	@test -n "$(ENV_PATH)" || (echo "ENV_PATH is not set"; exit 1)
 ifeq ($(shell uname), Linux)
-	$(eval DARGS := -u $$(shell id -u):$$(shell id -g) --group-add $$(shell getent group docker | cut -d ':' -f 3))
+	$(eval DARGS := -u $$(shell id -u) --group-add $$(shell getent group docker | cut -d ':' -f 3))
 endif
 	docker build --tag cloudsave-test-functional-java -f test/functional/Dockerfile test/functional && \
 	docker run --rm -t \
