@@ -10,11 +10,11 @@ IMAGE_NAME := $(shell basename "$$(pwd)")-app
 .PHONY: clean build image imagex
 
 clean:
-	docker run -t --rm -u $$(id -u):$$(id -g) -v $$(pwd):/data/ -w /data/ -e GRADLE_USER_HOME=.gradle gradle:7.5.1-jdk17 \
+	docker run -t --rm -u $$(id -u):$$(id -g) -v $$(pwd):/data/ -w /data/ -e GRADLE_USER_HOME=.gradle gradle:7.6.4-jdk17 \
 			gradle --console=plain -i --no-daemon clean
 
 build:
-	docker run -t --rm -u $$(id -u):$$(id -g) -v $$(pwd):/data/ -w /data/ -e GRADLE_USER_HOME=.gradle gradle:7.5.1-jdk17 \
+	docker run -t --rm -u $$(id -u):$$(id -g) -v $$(pwd):/data/ -w /data/ -e GRADLE_USER_HOME=.gradle gradle:7.6.4-jdk17 \
 			gradle --console=plain -i --no-daemon build
 
 image:
