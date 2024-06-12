@@ -57,9 +57,19 @@ APP_NAME="${APP_NAME}-$(echo $RANDOM | sha1sum | head -c 8)"   # Add random suff
 
 echo '# Downloading extend-helper-cli'
 
-curl -sf https://api.github.com/repos/AccelByte/extend-helper-cli/releases/latest \
+case "$(uname -s)" in
+    Darwin*)
+      curl -sf https://api.github.com/repos/AccelByte/extend-helper-cli/releases/latest \
+        | grep "/extend-helper-cli-darwin" | cut -d : -f 2,3 | tr -d \" \
+        | curl -sL --output extend-helper-cli $(cat)
+        ;;
+    *)
+      curl -sf https://api.github.com/repos/AccelByte/extend-helper-cli/releases/latest \
         | grep "/extend-helper-cli-linux" | cut -d : -f 2,3 | tr -d \" \
         | curl -sL --output extend-helper-cli $(cat)
+        ;;
+esac
+
 chmod +x ./extend-helper-cli
 
 echo '# Check environment variables'
@@ -144,22 +154,8 @@ if ! [ "$STATUS" = "R" ]; then
     exit 1
 fi
 
-APP_URL=$(api_curl "${AB_BASE_URL}/csm/v1/admin/namespaces/$AB_NAMESPACE/apps/$APP_NAME" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H 'content-type: application/json' | jq --raw-output .serviceURL )
-
-if [ "$APP_URL" == "null" ]; then
-  cat http_response.out
-  exit 1
-fi
-
-if [ -z "$GRPC_SERVER_URL" ]; then
-    echo "GRPC_SERVER_URL is not set. Setting it now..."
-    export GRPC_SERVER_URL="$APP_URL"
-fi
-
 sleep 60    # Wait until Extend app is running
 
 echo '# Testing Extend app using demo script'
 
-bash demo.sh
+EXTEND_APP_NAME="$APP_NAME" bash demo.sh
