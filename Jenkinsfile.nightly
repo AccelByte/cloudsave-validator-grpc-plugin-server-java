@@ -19,7 +19,7 @@ pipeline {
   stages {
     stage('Prepare') {
       agent {
-        label "extend-builder-batch"
+        label "${params.AGENT_LABEL}"
       }
       steps {
         script {
@@ -32,15 +32,15 @@ pipeline {
         }
       }
     }
-    stage('Test Functional') {
+    stage('Test Sample') {
       agent {
-        label "extend-builder-batch"
+        label "${params.AGENT_LABEL}"
       }
       options {
         lock("justice-demo-serversdktest")
       }
       stages {
-        stage('Local Sample') {
+        stage('Local Hosted') {
           steps {
             withCredentials([file(credentialsId: 'extend-sample-app-integration-test-env', variable: 'ENV_PATH')]) {
               sh 'cat $ENV_PATH > tmp.env'
