@@ -50,6 +50,8 @@ fi
 if [ -n "$GRPC_SERVER_URL" ]; then
   echo Registering cloudsave validator $GRPC_SERVER_URL ...
 
+  api_curl -X DELETE -s "${AB_BASE_URL}/cloudsave/v1/admin/namespaces/$AB_NAMESPACE/plugins" -H "Authorization: Bearer $ACCESS_TOKEN" -H 'Content-Type: application/json' >/dev/null
+
   api_curl -X POST -s "${AB_BASE_URL}/cloudsave/v1/admin/namespaces/$AB_NAMESPACE/plugins" -H "Authorization: Bearer $ACCESS_TOKEN" -H 'Content-Type: application/json' -d "{\"customConfig\":{\"GRPCAddress\":\"${GRPC_SERVER_URL}\"},\"customFunction\":{\"afterReadGameRecord\":true,\"beforeWritePlayerRecord\":true},\"extendType\":\"CUSTOM\"}" >/dev/null
 
   if [ "$(cat api_curl_http_code.out)" -ge "400" ]; then
@@ -57,6 +59,8 @@ if [ -n "$GRPC_SERVER_URL" ]; then
   fi
 elif [ -n "$EXTEND_APP_NAME" ]; then
   echo Registering cloudsave validator $EXTEND_APP_NAME ...
+
+  api_curl -X DELETE -s "${AB_BASE_URL}/cloudsave/v1/admin/namespaces/$AB_NAMESPACE/plugins" -H "Authorization: Bearer $ACCESS_TOKEN" -H 'Content-Type: application/json' >/dev/null
 
   api_curl -X POST -s "${AB_BASE_URL}/cloudsave/v1/admin/namespaces/$AB_NAMESPACE/plugins" -H "Authorization: Bearer $ACCESS_TOKEN" -H 'Content-Type: application/json' -d "{\"appConfig\":{\"appName\":\"${EXTEND_APP_NAME}\"},\"customFunction\":{\"afterReadGameRecord\":true,\"beforeWritePlayerRecord\":true},\"extendType\":\"APP\"}" >/dev/null
 
