@@ -43,7 +43,7 @@ echo '# Run ngrok'
 ( ngrok tcp 6565 > ngrok.log 2>&1 ) & NGROK_PID=$!
 
 for _ in {1..12}; do
-  sleep 5
+  sleep 10
   NGROK_RESPONSE=$(curl -s --location 'localhost:4040/api/tunnels')
   NGROK_URL=$(echo "$NGROK_RESPONSE" | jq -r '.tunnels[] | select(.config.addr = "localhost:6565") | .public_url')
   if [ -n "$NGROK_URL" ]; then
