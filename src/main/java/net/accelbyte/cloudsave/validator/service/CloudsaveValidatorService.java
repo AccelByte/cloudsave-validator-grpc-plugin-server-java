@@ -1,6 +1,7 @@
 package net.accelbyte.cloudsave.validator.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.protobuf.Timestamp;
 import io.grpc.stub.StreamObserver;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -14,8 +15,15 @@ import net.accelbyte.cloudsave.validator.model.PlayerActivity;
 import org.lognet.springboot.grpc.GRpcService;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.io.IOException;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.stream.Collectors;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 @Slf4j
 @GRpcService
@@ -25,17 +33,22 @@ public class CloudsaveValidatorService extends CloudsaveValidatorServiceGrpc.Clo
 
     private final Validator validator;
 
+    private final OkHttpClient binaryCheckClient;
+
+    private final long maxSizeForEventBannerInKB = 100;
+
     public CloudsaveValidatorService(
         @Autowired ObjectMapper objectMapper,
         @Autowired Validator validator
     ) {
         this.objectMapper = objectMapper;
         this.validator = validator;
+        binaryCheckClient = new OkHttpClient();
     }
 
     @Override
     public void beforeWriteGameRecord(GameRecord request, StreamObserver<GameRecordValidationResult> responseObserver) {
-        if (request.getKey().startsWith("map")) {
+        if (request.getKey().endsWith("map")) {
             CustomGameRecord record;
             try {
                 record = objectMapper.readValue(request.getPayload().toStringUtf8(), CustomGameRecord.class);
@@ -67,7 +80,7 @@ public class CloudsaveValidatorService extends CloudsaveValidatorServiceGrpc.Clo
 
     @Override
     public void afterReadGameRecord(GameRecord request, StreamObserver<GameRecordValidationResult> responseObserver) {
-        if (request.getKey().startsWith("daily_msg")) {
+        if (request.getKey().endsWith("daily_msg")) {
             DailyMessage message;
             try {
                 message = objectMapper.readValue(request.getPayload().toStringUtf8(), DailyMessage.class);
@@ -102,7 +115,7 @@ public class CloudsaveValidatorService extends CloudsaveValidatorServiceGrpc.Clo
                     .setKey(it.getKey())
                     .build();
 
-            if (!it.getKey().startsWith("daily_msg")) {
+            if (!it.getKey().endsWith("daily_msg")) {
                 return success;
             }
 
@@ -147,7 +160,7 @@ public class CloudsaveValidatorService extends CloudsaveValidatorServiceGrpc.Clo
     @Override
     public void beforeWritePlayerRecord(PlayerRecord request,
             StreamObserver<PlayerRecordValidationResult> responseObserver) {
-        if (request.getKey().startsWith("favourite_weapon")) {
+        if (request.getKey().endsWith("favourite_weapon")) {
             try {
                 CustomPlayerRecord record;
                 try {
@@ -204,12 +217,11 @@ public class CloudsaveValidatorService extends CloudsaveValidatorServiceGrpc.Clo
                 .build();
         responseObserver.onNext(response);
         responseObserver.onCompleted();
-
     }
 
     @Override
     public void beforeWriteAdminGameRecord(AdminGameRecord request, StreamObserver<GameRecordValidationResult> responseObserver) {
-        if (!request.getKey().startsWith("map")) {
+        if (!request.getKey().endsWith("map")) {
             responseGameRecordSuccess(responseObserver, request.getKey());
             return;
         }
@@ -245,7 +257,7 @@ public class CloudsaveValidatorService extends CloudsaveValidatorServiceGrpc.Clo
 
     @Override
     public void beforeWriteAdminPlayerRecord(AdminPlayerRecord request, StreamObserver<PlayerRecordValidationResult> responseObserver) {
-        if (!request.getKey().startsWith("player_activity")) {
+        if (!request.getKey().endsWith("player_activity")) {
             responsePlayerRecordSuccess(responseObserver, request.getKey(), request.getUserId());
             return;
         }
@@ -323,6 +335,148 @@ public class CloudsaveValidatorService extends CloudsaveValidatorServiceGrpc.Clo
                 .setUserId(userId)
                 .build();
 
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void beforeWriteGameBinaryRecord(GameBinaryRecord request, StreamObserver<GameRecordValidationResult> responseObserver) {
+        if (!request.getKey().endsWith("event_banner")) {
+            responseGameRecordSuccess(responseObserver, request.getKey());
+            return;
+        }
+
+        final Request checkRequest = new Request.Builder()
+                .url(request.getBinaryInfo().getUrl())
+                .get()
+                .build();
+        try (Response checkResponse = binaryCheckClient.newCall(checkRequest).execute()) {
+            if (!checkResponse.isSuccessful()) {
+                var errorDetail = Error.newBuilder()
+                        .setErrorCode(1)
+                        .setErrorMessage("Failed to check binary url")
+                        .build();
+                responseGameRecordFailed(responseObserver, request.getKey(), errorDetail);
+                return;
+            }
+
+            if (checkResponse.body() == null) {
+                var errorDetail = Error.newBuilder()
+                        .setErrorCode(1)
+                        .setErrorMessage("No body in response")
+                        .build();
+                responseGameRecordFailed(responseObserver, request.getKey(), errorDetail);
+                return;
+            }
+
+            final long contentLengthInKB = checkResponse.body().contentLength() / 1000;
+            if (contentLengthInKB > maxSizeForEventBannerInKB) {
+                var errorDetail = Error.newBuilder()
+                        .setErrorCode(1)
+                        .setErrorMessage("maximum size for event banner is [%d] kB".formatted(maxSizeForEventBannerInKB))
+                        .build();
+                responseGameRecordFailed(responseObserver, request.getKey(), errorDetail);
+                return;
+            }
+
+            responseGameRecordSuccess(responseObserver, request.getKey());
+
+        } catch (IOException e) {
+            var errorDetail = Error.newBuilder()
+                    .setErrorCode(1)
+                    .setErrorMessage(e.getMessage())
+                    .build();
+            responseGameRecordFailed(responseObserver, request.getKey(), errorDetail);
+        }
+    }
+
+    @Override
+    public void afterReadGameBinaryRecord(GameBinaryRecord request, StreamObserver<GameRecordValidationResult> responseObserver) {
+        if (!request.getKey().endsWith("daily_event_stage")) {
+            responseGameRecordSuccess(responseObserver, request.getKey());
+            return;
+        }
+
+        Timestamp tsUpdatedAt = request.getBinaryInfo().getUpdatedAt();
+        Instant updatedAt = Instant.ofEpochSecond(tsUpdatedAt.getSeconds(),tsUpdatedAt.getNanos());
+
+        LocalDate ld1 = LocalDateTime.ofInstant(updatedAt, ZoneId.systemDefault()).toLocalDate();
+        LocalDate ld2 = LocalDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()).toLocalDate();
+        if (!ld1.isEqual(ld2)) {
+            var errorDetail = Error.newBuilder()
+                    .setErrorCode(1)
+                    .setErrorMessage("Today's %s is not ready yet".formatted(request.getKey()))
+                    .build();
+            responseGameRecordFailed(responseObserver, request.getKey(), errorDetail);
+        }
+
+        responseGameRecordSuccess(responseObserver, request.getKey());
+    }
+
+    @Override
+    public void afterBulkReadGameBinaryRecord(BulkGameBinaryRecord request, StreamObserver<BulkGameRecordValidationResult> responseObserver) {
+        var result = request.getGameBinaryRecordsList().stream().map(it -> {
+            if (!it.getKey().endsWith("daily_event_stage")) {
+                return GameRecordValidationResult.newBuilder().setIsSuccess(true).setKey(it.getKey()).build();
+            }
+
+            Timestamp tsUpdatedAt = it.getBinaryInfo().getUpdatedAt();
+            Instant updatedAt = Instant.ofEpochSecond(tsUpdatedAt.getSeconds(),tsUpdatedAt.getNanos());
+
+            LocalDate ld1 = LocalDateTime.ofInstant(updatedAt, ZoneId.systemDefault()).toLocalDate();
+            LocalDate ld2 = LocalDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()).toLocalDate();
+            if (!ld1.isEqual(ld2)) {
+                var errorDetail = Error.newBuilder()
+                        .setErrorCode(1)
+                        .setErrorMessage("Today's %s is not ready yet".formatted(it.getKey()))
+                        .build();
+                return GameRecordValidationResult.newBuilder().setIsSuccess(false).setKey(it.getKey()).setError(errorDetail).build();
+            }
+
+            return GameRecordValidationResult.newBuilder().setIsSuccess(true).setKey(it.getKey()).build();
+        }).toList();
+
+        var response = BulkGameRecordValidationResult.newBuilder().addAllValidationResults(result).build();
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void beforeWritePlayerBinaryRecord(PlayerBinaryRecord request, StreamObserver<PlayerRecordValidationResult> responseObserver) {
+        if (!request.getKey().endsWith("id_card")) {
+            responsePlayerRecordSuccess(responseObserver, request.getKey(),request.getUserId());
+            return;
+        }
+
+        if (request.getBinaryInfo().getVersion() > 1) {
+            var errorDetail = Error.newBuilder()
+                    .setErrorCode(1)
+                    .setErrorMessage("id card can only be created once")
+                    .build();
+            responsePlayerRecordFailed(responseObserver,request.getKey(),request.getUserId(),errorDetail);
+        }
+
+        responsePlayerRecordSuccess(responseObserver, request.getKey(),request.getUserId());
+    }
+
+    @Override
+    public void afterReadPlayerBinaryRecord(PlayerBinaryRecord request, StreamObserver<PlayerRecordValidationResult> responseObserver) {
+        responsePlayerRecordSuccess(responseObserver, request.getKey(), request.getUserId());
+    }
+
+    @Override
+    public void afterBulkReadPlayerBinaryRecord(BulkPlayerBinaryRecord request, StreamObserver<BulkPlayerRecordValidationResult> responseObserver) {
+        var result = request.getPlayerBinaryRecordsList().stream()
+                .map(it -> PlayerRecordValidationResult.newBuilder()
+                        .setIsSuccess(true)
+                        .setKey(it.getKey())
+                        .setUserId(it.getUserId())
+                        .build()
+                ).toList();
+
+        var response = BulkPlayerRecordValidationResult.newBuilder()
+                .addAllValidationResults(result)
+                .build();
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
