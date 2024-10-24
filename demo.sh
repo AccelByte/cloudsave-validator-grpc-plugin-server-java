@@ -27,9 +27,15 @@ api_curl()
 
 clean_up()
 {
-  echo Deleting player ...
+  echo Getting player ...
 
-  api_curl -X DELETE "${AB_BASE_URL}/iam/v3/admin/namespaces/$AB_NAMESPACE/users/$USER_ID/information" -H "Authorization: Bearer $ACCESS_TOKEN"
+  USER_ID=$(api_curl -X GET "${AB_BASE_URL}/iam/v3/admin/namespaces/$AB_NAMESPACE/users?emailAddress=${DEMO_PREFIX}_player@test.com" -H "Authorization: Bearer $ACCESS_TOKEN" -H 'Content-Type: application/json' | jq --raw-output .userId)
+
+  if [ "$USER_ID" != "null" ] && [ -n "$USER_ID" ]; then
+    echo Deleting player ...
+
+    api_curl -X DELETE "${AB_BASE_URL}/iam/v3/admin/namespaces/$AB_NAMESPACE/users/$USER_ID/information" -H "Authorization: Bearer $ACCESS_TOKEN"
+  fi
 
   echo Resetting cloudsave validator ...
 
@@ -46,6 +52,8 @@ if [ "$(cat api_curl_http_code.out)" -ge "400" ]; then
   cat api_curl_http_response.out
   exit 1
 fi
+
+clean_up
 
 if [ -n "$GRPC_SERVER_URL" ]; then
   echo Registering cloudsave validator $GRPC_SERVER_URL ...
