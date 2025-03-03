@@ -332,8 +332,11 @@ can use something like [ngrok](https://ngrok.com/).
    make ngrok NGROK_AUTHTOKEN=xxxxxxxxxxx
    ```
 
+   > :warning: **Ngrok free plan has some limitations**: You may want to use paid plan if the traffic is high.
+
    > :warning: **If you are running [grpc-plugin-dependencies](https://github.com/AccelByte/grpc-plugin-dependencies) stack alongside this app as mentioned in [Test Observability](#test-observability)**: Run the above 
-   command in `grpc-plugin-dependencies` directory instead of this app directory.
+   command in `grpc-plugin-dependencies` directory instead of this app directory. 
+   This way, the `gRPC server` will be called via `Envoy` service within `grpc-plugin-dependencies` stack instead of directly.
 
 4. [Create an OAuth Client](https://docs.accelbyte.io/gaming-services/services/access/authorization/manage-access-control-for-applications/#create-an-iam-client) with `confidential` client type with the following permissions. Keep the `Client ID` and `Client Secret`.
    
@@ -349,26 +352,12 @@ can use something like [ngrok](https://ngrok.com/).
       - Cloud Save -> Player Records (Read, Create, Update, Delete)
       - IAM -> Users (Delete)
 
-   > :warning: **Oauth Client created in this step is different from the one from Prerequisites section:** It is required 
-   by [demo.sh](demo.sh) script in the next step to register the `gRPC Server` URL and also to create and delete test users.
+   > :warning: **Oauth Client created in this step is different from the one from Prerequisites section:** It is required by the Postman collection in the next step to register the `gRPC Server` URL and also to create and delete test users.
 
-5. Run the [demo.sh](demo.sh) script to simulate AGS operation which calls this app using the `Client ID` 
-and `Client Secret` created in the previous step. Pay attention this app log in the console when the script is running. 
-The custom functions should get called by AGS.
+5. Import the [Postman collection](demo/cloudsave-validator-demo.postman_collection.json) in order to simulate the extend app flow. Pay attention to this app console log when extend app flow is running. At least one of the `gRPC Server` methods should get called when you run all the requests in the collection.
 
-   ```
-   export AB_BASE_URL='https://test.accelbyte.io'
-   export AB_CLIENT_ID='xxxxxxxxxx'         # Use Client ID from the previous step
-   export AB_CLIENT_SECRET='xxxxxxxxxx'     # Use Client Secret from the previous step    
-   export AB_NAMESPACE='accelbyte'          # Use your Namespace ID
-   export GRPC_SERVER_URL='0.tcp.ap.ngrok.io:xxxxx'  # Use your ngrok forwarding URL
-   bash demo.sh
-   ```
-
-   > :warning: **Make sure demo.sh has Unix line-endings (LF)**: If this repository was cloned in Windows for example, the `demo.sh` may have Windows line-endings (CRLF) instead. In this case, use tools like `dos2unix` to change the line-endings to Unix (LF).
-   Invalid line-endings may cause errors such as `demo.sh: line 2: $'\r': command not found`.
-
-> :warning: **Ngrok free plan has some limitations**: You may want to use paid plan if the traffic is high.
+   > :warning: Please don't forget to set the required environment variables in the Postman Collection Overview (and/or the Global Environment) including the `Client ID` and `Client Secret` created in the previous step.
+   > You'll also need to set the environment variable `GRPC_SERVER_URL` (ex: `9.tcp.ap.ngrok.io:99999`) if you're using Ngrok to expose your locally hosted Extend App; or `EXTEND_APP_NAME` if you deployed your Extend App to AccelByte Gaming Services.
 
 ### Test Observability
 
