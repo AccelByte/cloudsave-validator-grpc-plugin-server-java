@@ -14,7 +14,6 @@ services:
       - OTEL_EXPORTER_ZIPKIN_ENDPOINT=http://host.docker.internal:9411/api/v2/spans
       - OTEL_TRACES_EXPORTER=zipkin
       - OTEL_METRICS_EXPORTER=none
-      - OTEL_SERVICE_NAME=CloudsaveValidatorGrpcPluginServerJava
       - OTEL_PROPAGATORS=b3multi
       # - JAVA_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
     extra_hosts:
